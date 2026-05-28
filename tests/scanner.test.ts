@@ -13,7 +13,7 @@ describe('Scanner', () => {
             command: 'node',
             args: ['server.js'],
             env: {
-              OPENAI_KEY: 'sk-1234567890abcdefghijklmnopqrstuvwxyz',
+              OPENAI_KEY: 'sk-FAKETESTVALUEnotarealkey00000000000000',
             },
           },
         },
@@ -134,7 +134,7 @@ describe('Scanner', () => {
             command: 'node',
             args: ['server.js'],
             env: {
-              DB_PASSWORD: 'supersecret123',
+              DB_PASSWORD: 'FAKE_test_value',
               NODE_ENV: 'production',
             },
           },
