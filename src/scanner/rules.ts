@@ -435,6 +435,158 @@ export const BUILTIN_RULES: ScanRule[] = [
     },
   },
 
+  // MCP04: Template injection via server args
+  {
+    id: 'MCP04-002',
+    name: 'Template injection patterns in arguments',
+    category: 'MCP04:CommandInjection',
+    severity: 'high',
+    description: 'Detects template injection patterns (Jinja, EJS, Python format strings) in server arguments',
+    check: (name, config) => {
+      const findings: ScanFinding[] = [];
+      const templatePatterns = [
+        /\{\{.*\}\}/,          // Jinja/Mustache/Handlebars
+        /<%.*%>/,              // EJS/ERB
+        /\$\{.*\}/,            // JS template literal in args (not env var refs)
+        /#\{.*\}/,             // Ruby interpolation
+        /\{%.*%\}/,            // Jinja block tags
+      ];
+
+      for (const arg of config.args ?? []) {
+        for (const pattern of templatePatterns) {
+          if (pattern.test(arg)) {
+            findings.push(finding(
+              ruleRef('MCP04-002', 'MCP04:CommandInjection', 'high'),
+              `Server "${name}" has template injection pattern in args: "${arg.substring(0, 80)}"`,
+              {
+                evidence: `arg: ${arg.substring(0, 120)}`,
+                remediation: 'Do not use template expressions in MCP server arguments. Use static values or environment variables.',
+              }
+            ));
+                   break;
+          }
+        }
+      }
+
+      return findings;
+    },
+  },
+
+  // MCP05: Sensitive file path access
+  {
+    id: 'MCP05-002',
+    name: 'Access to sensitive system paths',
+    category: 'MCP05:PathTraversal',
+    severity: 'high',
+    description: 'Detects MCP servers with access to sensitive system files or directories',
+    check: (name, config) => {
+      const findings: ScanFinding[] = [];
+      const sensitivePaths = [
+        /\/etc\/(passwd|shadow|sudoers|ssh)/,
+        /\/root\//,
+        /\/\.ssh\//,
+        /\/\.aws\//,
+        /\/\.gnupg\//,
+        /\/\.kube\/config/,
+        /\/\.docker\/config/,
+        /\/\.npmrc/,
+        /\/\.env/,
+        /\/\.git\/config/,
+        /C:\\Windows\\System32/i,
+        /C:\\Users\\.*\\AppData/i,
+      ];
+
+      const allValues = [
+        ...(config.args ?? []),
+        ...Object.values(config.env ?? {}),
+        config.url ?? '',
+      ];
+
+      for (const val of allValues) {
+        for (const pattern of sensitivePaths) {
+          if (pattern.test(val)) {
+            findings.push(finding(
+              ruleRef('MCP05-002', 'MCP05:PathTraversal', 'high'),
+              `Server "${name}" accesses sensitive path: ${val.substring(0, 100)}`,
+              {
+                evidence: `value: ${val.substring(0, 120)}`,
+                remediation: 'Avoid granting MCP servers access to sensitive system paths, credential stores, or config directories.',
+              }
+            ));
+            break;
+          }
+        }
+      }
+
+      return findings;
+    },
+  },
+
+  // MCP07: Docker socket exposure
+  {
+    id: 'MCP07-002',
+    name: 'Docker socket or container runtime exposure',
+    category: 'MCP07:InsecureDefaults',
+    severity: 'critical',
+    description: 'Detects MCP servers with access to Docker socket or container runtime',
+    check: (name, config) => {
+      const findings: ScanFinding[] = [];
+      const allValues = [
+        config.command ?? '',
+        ...(config.args ?? []),
+        ...Object.values(config.env ?? {}),
+      ];
+      const combined = allValues.join(' ');
+
+      if (combined.includes('/var/run/docker.sock') || combined.includes('docker.sock')) {
+        findings.push(finding(
+          ruleRef('MCP07-002', 'MCP07:InsecureDefaults', 'critical'),
+          `Server "${name}" has access to Docker socket`,
+          {
+            evidence: 'docker.sock mount detected',
+            remediation: 'Never expose the Docker socket to MCP servers. Use a restricted Docker API proxy if container access is needed.',
+          }
+        ));
+      }
+
+      return findings;
+    },
+  },
+
+  // MCP10: Writable mount to host system
+  {
+    id: 'MCP10-002',
+    name: 'Writable host mount in container config',
+    category: 'MCP10:PrivilegeEscalation',
+    severity: 'high',
+    description: 'Detects container configs that mount host directories as writable',
+    check: (name, config) => {
+      const findings: ScanFinding[] = [];
+      const args = config.args?.join(' ') ?? '';
+
+      // Docker -v or --volume with rw or no read-only flag on system paths
+      const volumeMount = /-v\s+\/[^:]+:[^:]+(?::rw)?(?:\s|$)/;
+      const bindMount = /--mount\s+type=bind[^-]*source=\/[^,]+/;
+
+      if (volumeMount.test(args) || bindMount.test(args)) {
+        // Check if mounting sensitive host paths
+        const sensitiveMount = /(-v|--volume)\s+\/(etc|root|var|usr|home)[\/:\s]/;
+        if (sensitiveMount.test(args)) {
+          findings.push(finding(
+            ruleRef('MCP10-002', 'MCP10:PrivilegeEscalation', 'high'),
+            `Server "${name}" mounts host system paths into container`,
+            {
+              evidence: args.substring(0, 200),
+              remediation: 'Avoid mounting host system directories into MCP server containers. Use named volumes or restrict to specific safe paths.',
+            }
+          ));
+        }
+      }
+
+      return findings;
+    },
+  },
+
   // MCP09: Audit Gaps
   {
     id: 'MCP09-001',

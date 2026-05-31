@@ -1,0 +1,13 @@
+# Source files (dist/ is what users need)
+src/
+tests/
+
+# Config files
+tsconfig.json
+vitest.config.ts
+.github/
+.gitguardian.yml
+
+# Dev files
+*.test.ts
+*.spec.ts

@@ -111,13 +111,13 @@ rules:
 | MCP01 | Tool Poisoning | Hidden instructions, zero-width chars |
 | MCP02 | Excessive Permissions | Root-level access, wildcard permissions |
 | MCP03 | Insecure Transport | Unencrypted HTTP, SSRF via metadata endpoints |
-| MCP04 | Command Injection | Shell metacharacters in args |
-| MCP05 | Path Traversal | `..` in paths |
+| MCP04 | Command Injection | Shell metacharacters in args, template injection (Jinja, EJS, Mustache) |
+| MCP05 | Path Traversal | `..` in paths, access to sensitive system paths (.ssh, .aws, .kube, .env) |
 | MCP06 | Secret Exposure | 15+ token patterns (AWS, Stripe, GitHub, Slack, etc.), sensitive env vars with literal values |
-| MCP07 | Insecure Defaults | Missing security config for remote servers |
+| MCP07 | Insecure Defaults | Missing security config for remote servers, Docker socket exposure |
 | MCP08 | Input Validation | Shell interpreters, curl\|sh pipe-to-shell patterns |
 | MCP09 | Audit Gaps | No logging configured |
-| MCP10 | Privilege Escalation | sudo, --privileged |
+| MCP10 | Privilege Escalation | sudo, --privileged, writable host mounts in containers |
 
 ## Try It
 

@@ -194,6 +194,62 @@ describe('Scanner', () => {
       expect(findings.some(f => f.rule === 'MCP03-002')).toBe(true);
     });
 
+    it('should detect template injection in args (MCP04-002)', () => {
+      const config: McpConfigFile = {
+        mcpServers: {
+          'template-server': {
+            command: 'node',
+            args: ['server.js', '--query={{user_input}}'],
+          },
+        },
+      };
+
+      const findings = scanner.scanConfig(config);
+      expect(findings.some(f => f.rule === 'MCP04-002')).toBe(true);
+    });
+
+    it('should detect sensitive file path access (MCP05-002)', () => {
+      const config: McpConfigFile = {
+        mcpServers: {
+          'ssh-server': {
+            command: 'node',
+            args: ['server.js', '--keys=/home/user/.ssh/id_rsa'],
+          },
+        },
+      };
+
+      const findings = scanner.scanConfig(config);
+      expect(findings.some(f => f.rule === 'MCP05-002')).toBe(true);
+    });
+
+    it('should detect Docker socket exposure (MCP07-002)', () => {
+      const config: McpConfigFile = {
+        mcpServers: {
+          'docker-server': {
+            command: 'docker',
+            args: ['run', '-v', '/var/run/docker.sock:/var/run/docker.sock', 'mcp-server'],
+          },
+        },
+      };
+
+      const findings = scanner.scanConfig(config);
+      expect(findings.some(f => f.rule === 'MCP07-002')).toBe(true);
+    });
+
+    it('should detect writable host mounts (MCP10-002)', () => {
+      const config: McpConfigFile = {
+        mcpServers: {
+          'mount-server': {
+            command: 'docker',
+            args: ['run', '-v', '/etc/config:/app/config:rw', 'mcp-server'],
+          },
+        },
+      };
+
+      const findings = scanner.scanConfig(config);
+      expect(findings.some(f => f.rule === 'MCP10-002')).toBe(true);
+    });
+
     it('should pass clean configuration', () => {
       const config: McpConfigFile = {
         mcpServers: {
